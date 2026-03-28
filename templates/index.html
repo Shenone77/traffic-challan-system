@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Traffic Challan System{% endblock %}
+
+{% block content %}
+<div class="topbar">
+    <h4><i class="bi bi-speedometer2 me-2"></i>Dashboard</h4>
+    <span class="text-muted" style="font-size:13px">
+        <i class="bi bi-calendar me-1"></i>
+        <span id="datetime"></span>
+    </span>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-2">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value">{{ stats.total_challans }}</div>
+                    <div class="stat-label">Total Challans</div>
+                </div>
+                <div class="stat-icon bg-primary bg-opacity-10">
+                    <i class="bi bi-file-earmark-text text-primary"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stat-card" style="border-left-color:#e65100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value text-warning">{{ stats.pending_challans }}</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-icon" style="background:#fff3e0">
+                    <i class="bi bi-hourglass-split" style="color:#e65100"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stat-card" style="border-left-color:#2e7d32">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value text-success">{{ stats.sent_challans }}</div>
+                    <div class="stat-label">Sent</div>
+                </div>
+                <div class="stat-icon" style="background:#e8f5e9">
+                    <i class="bi bi-check-circle text-success"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stat-card" style="border-left-color:#1565c0">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value text-primary">{{ stats.today_challans }}</div>
+                    <div class="stat-label">Today</div>
+                </div>
+                <div class="stat-icon" style="background:#e3f2fd">
+                    <i class="bi bi-calendar-day text-primary"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stat-card" style="border-left-color:#6a1b9a">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value" style="color:#6a1b9a">{{ stats.total_owners }}</div>
+                    <div class="stat-label">Owners</div>
+                </div>
+                <div class="stat-icon" style="background:#f3e5f5">
+                    <i class="bi bi-people" style="color:#6a1b9a"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stat-card" style="border-left-color:#b71c1c">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value text-danger">&#8377;{{ "{:,}".format(stats.total_fines) }}</div>
+                    <div class="stat-label">Total Fines</div>
+                </div>
+                <div class="stat-icon" style="background:#ffebee">
+                    <i class="bi bi-currency-rupee text-danger"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions + Recent Challans -->
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="data-card h-100">
+            <div class="card-title">
+                <i class="bi bi-lightning me-2"></i>Quick Actions
+            </div>
+            <div class="d-grid gap-2">
+                <a href="{{ url_for('detect') }}" class="btn btn-danger">
+                    <i class="bi bi-camera-video me-2"></i>Detect Violation
+                </a>
+                <a href="{{ url_for('challans') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-file-earmark-text me-2"></i>View All Challans
+                </a>
+                <a href="{{ url_for('owners') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-person-plus me-2"></i>Manage Vehicle Owners
+                </a>
+            </div>
+            <div class="mt-4">
+                <div class="card-title">
+                    <i class="bi bi-info-circle me-2"></i>Fine Structure
+                </div>
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <td><span class="violation-badge">No Helmet</span></td>
+                            <td class="text-end fw-bold text-danger">&#8377;1,000</td>
+                        </tr>
+                        <tr>
+                            <td><span class="violation-badge">Triple Riding</span></td>
+                            <td class="text-end fw-bold text-danger">&#8377;1,000</td>
+                        </tr>
+                        <tr>
+                            <td><span class="violation-badge">No Seatbelt</span></td>
+                            <td class="text-end fw-bold text-danger">&#8377;1,000</td>
+                        </tr>
+                        <tr>
+                            <td><span class="violation-badge">Wrong Lane</span></td>
+                            <td class="text-end fw-bold text-danger">&#8377;500</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="data-card">
+            <div class="d-flex justify-content-between align-items-center card-title">
+                <span><i class="bi bi-clock-history me-2"></i>Recent Challans</span>
+                <a href="{{ url_for('challans') }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            {% if challans %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Plate</th>
+                            <th>Violations</th>
+                            <th>Fine</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in challans %}
+                        <tr>
+                            <td class="text-muted">#{{ "%06d" % c.id }}</td>
+                            <td><b>{{ c.plate_number }}</b></td>
+                            <td>
+                                {% for v in c.violations %}
+                                <span class="violation-badge">{{ v.replace('_',' ') }}</span>
+                                {% endfor %}
+                            </td>
+                            <td class="text-danger fw-bold">&#8377;{{ "{:,}".format(c.total_fine) }}</td>
+                            <td>
+                                <span class="badge badge-{{ c.status }} px-2 py-1">
+                                    {{ c.status.upper() }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('view_challan', challan_id=c.id) }}"
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-inbox" style="font-size:40px"></i>
+                <p class="mt-2">No challans yet. Upload an image to detect violations!</p>
+                <a href="{{ url_for('detect') }}" class="btn btn-danger mt-2">
+                    <i class="bi bi-camera-video me-2"></i>Start Detection
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateTime() {
+    const now = new Date();
+    document.getElementById('datetime').textContent =
+        now.toLocaleString('en-IN', {dateStyle:'medium', timeStyle:'short'});
+}
+updateTime();
+setInterval(updateTime, 1000);
+</script>
+{% endblock %}

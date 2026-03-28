@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Challans{% endblock %}
+{% block extra_css %}
+<style>
+.page-header { margin-bottom:28px; }
+.page-header h3 { font-weight:700; color:#1a237e; margin:0; }
+.page-header p  { color:#888; margin:4px 0 0; }
+.filter-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:20px; }
+.filter-row input { padding:9px 14px; border-radius:10px; border:1.5px solid #e0e0e0; font-size:13px; outline:none; }
+.filter-row select { padding:9px 14px; border-radius:10px; border:1.5px solid #e0e0e0; font-size:13px; outline:none; }
+.badge-pending { background:#fff3e0; color:#e65100; padding:4px 10px; border-radius:50px; font-size:12px; font-weight:600; }
+.badge-sent    { background:#e8f5e9; color:#2e7d32; padding:4px 10px; border-radius:50px; font-size:12px; font-weight:600; }
+.badge-paid    { background:#e3f2fd; color:#1565c0; padding:4px 10px; border-radius:50px; font-size:12px; font-weight:600; }
+.violation-tag { background:#ffebee; color:#c62828; border-radius:4px; padding:2px 7px; font-size:11px; font-weight:500; display:inline-block; margin:1px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="d-flex justify-content-between align-items-start">
+    <div>
+      <h3><i class="bi bi-file-earmark-text me-2"></i>Challans</h3>
+      <p>All generated traffic violation challans</p>
+    </div>
+    <button class="btn btn-outline-danger btn-sm" onclick="deletePaid()">
+      <i class="bi bi-trash me-1"></i>Delete All Paid
+    </button>
+  </div>
+</div>
+
+<div class="filter-row">
+  <input type="text" id="searchInput" placeholder="🔍  Search plate, owner..."
+         oninput="filterTable()" style="flex:1; min-width:200px;">
+  <select id="statusFilter" onchange="filterTable()">
+    <option value="">All Status</option>
+    <option value="pending">Pending</option>
+    <option value="sent">Sent</option>
+    <option value="paid">Paid</option>
+  </select>
+</div>
+
+<div style="background:white;border-radius:16px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.07);">
+  {% if challans %}
+  <div class="table-responsive">
+    <table class="table table-hover" id="challansTable">
+      <thead>
+        <tr>
+          <th>#</th><th>Plate</th><th>Owner</th><th>Violations</th>
+          <th>Fine</th><th>Status</th><th>Date</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in challans %}
+        <tr data-status="{{ c.status }}">
+          <td class="text-muted">#{{ c.id }}</td>
+          <td><span class="badge bg-primary">{{ c.plate_number }}</span></td>
+          <td>{{ c.owner_name or '<span class="text-muted">Unregistered</span>' | safe }}</td>
+          <td>
+            {% for v in c.violations %}
+              <span class="violation-tag">{{ v.replace('_',' ')|title }}</span>
+            {% endfor %}
+          </td>
+          <td><strong>₹{{ c.total_fine }}</strong></td>
+          <td>
+            <span class="badge-{{ c.status }}">{{ c.status|title }}</span>
+          </td>
+          <td>{{ c.created_at[:16] }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="/challan/{{ c.id }}" class="btn btn-sm btn-outline-primary" title="View">
+                <i class="bi bi-eye"></i>
+              </a>
+              {% if c.pdf_path %}
+              <a href="/challan/{{ c.id }}/pdf" class="btn btn-sm btn-outline-secondary" title="PDF">
+                <i class="bi bi-download"></i>
+              </a>
+              {% endif %}
+              <button class="btn btn-sm btn-outline-success" title="Send Email"
+                      onclick="sendEmail({{ c.id }}, this)">
+                <i class="bi bi-envelope"></i>
+              </button>
+              {% if c.status != 'paid' %}
+              <button class="btn btn-sm btn-outline-info" title="Mark Paid"
+                      onclick="markPaid({{ c.id }}, this)">
+                <i class="bi bi-check-circle"></i>
+              </button>
+              {% endif %}
+              <button class="btn btn-sm btn-outline-danger" title="Delete"
+                      onclick="deleteChallan({{ c.id }}, this)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="text-center py-5">
+    <i class="bi bi-file-earmark-text" style="font-size:48px;color:#e0e0e0;"></i>
+    <p class="text-muted mt-3">No challans yet. Upload an image to detect violations.</p>
+    <a href="/detect" class="btn btn-primary mt-2">Detect Violation</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterTable() {
+  const q  = document.getElementById("searchInput").value.toLowerCase();
+  const st = document.getElementById("statusFilter").value;
+  document.querySelectorAll("#challansTable tbody tr").forEach(row => {
+    const txt    = row.textContent.toLowerCase();
+    const status = row.dataset.status;
+    const matchQ  = !q  || txt.includes(q);
+    const matchSt = !st || status === st;
+    row.style.display = (matchQ && matchSt) ? "" : "none";
+  });
+}
+
+async function sendEmail(id, btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  const r    = await fetch(`/challan/${id}/send`, {method:"POST"});
+  const data = await r.json();
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-envelope"></i>';
+  alert(data.ok ? ("✅ " + data.msg) : ("❌ " + data.msg));
+  if (data.ok) location.reload();
+}
+
+async function markPaid(id, btn) {
+  if (!confirm("Mark challan #" + id + " as PAID?")) return;
+  await fetch(`/challan/${id}/status`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({status:"paid"})
+  });
+  location.reload();
+}
+
+async function deleteChallan(id, btn) {
+  if (!confirm("Delete challan #" + id + "? This cannot be undone.")) return;
+  const r    = await fetch(`/challan/${id}/delete`, {method:"POST"});
+  const data = await r.json();
+  if (data.ok) {
+    btn.closest("tr").remove();
+  } else {
+    alert("Error: " + data.msg);
+  }
+}
+
+async function deletePaid() {
+  if (!confirm("Delete ALL paid challans? This cannot be undone.")) return;
+  const rows = document.querySelectorAll("#challansTable tbody tr[data-status='paid']");
+  for (const row of rows) {
+    const id = row.querySelector("td").textContent.replace("#","").trim();
+    await fetch(`/challan/${id}/delete`, {method:"POST"});
+    row.remove();
+  }
+  alert("✅ All paid challans deleted.");
+}
+</script>
+{% endblock %}

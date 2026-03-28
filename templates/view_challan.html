@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}Challan #{{ "%06d" % challan.id }}{% endblock %}
+
+{% block content %}
+<div class="topbar">
+    <h4><i class="bi bi-file-earmark-text me-2"></i>
+        Challan #{{ "%06d" % challan.id }}</h4>
+    <div class="d-flex gap-2">
+        {% if challan.pdf_path %}
+        <a href="{{ url_for('download_pdf', challan_id=challan.id) }}"
+           class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-download me-1"></i>Download PDF
+        </a>
+        {% endif %}
+        {% if owner and owner.email %}
+        <button class="btn btn-success btn-sm"
+                onclick="sendChallan({{ challan.id }})">
+            <i class="bi bi-send me-1"></i>Send to Owner
+        </button>
+        {% endif %}
+        <a href="{{ url_for('challans') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Challan Details -->
+    <div class="col-md-8">
+        <div class="data-card mb-3">
+            <div class="card-title">
+                <i class="bi bi-info-circle me-2"></i>Challan Details
+            </div>
+            <div class="row g-2">
+                <div class="col-6">
+                    <div style="background:#f8f9fa;border-radius:8px;padding:12px;">
+                        <div style="font-size:11px;color:#666;text-transform:uppercase">
+                            Plate Number
+                        </div>
+                        <div style="font-size:20px;font-weight:700;color:#1a237e">
+                            {{ challan.plate_number }}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div style="background:#f8f9fa;border-radius:8px;padding:12px;">
+                        <div style="font-size:11px;color:#666;text-transform:uppercase">
+                            Total Fine
+                        </div>
+                        <div style="font-size:20px;font-weight:700;color:#b71c1c">
+                            ₹{{ "{:,}".format(challan.total_fine) }}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div style="background:#f8f9fa;border-radius:8px;padding:12px;">
+                        <div style="font-size:11px;color:#666;text-transform:uppercase">
+                            Date & Time
+                        </div>
+                        <div style="font-size:14px;font-weight:600">
+                            {{ challan.created_at[:16] }}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div style="background:#f8f9fa;border-radius:8px;padding:12px;">
+                        <div style="font-size:11px;color:#666;text-transform:uppercase">
+                            Status
+                        </div>
+                        <span class="badge badge-{{ challan.status }} px-2 py-1 mt-1">
+                            {{ challan.status.upper() }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Violations & Fines -->
+        <div class="data-card mb-3">
+            <div class="card-title">
+                <i class="bi bi-exclamation-triangle me-2 text-danger"></i>
+                Violations Detected
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Violation</th>
+                        <th class="text-end">Fine</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set labels = {
+                        'no_helmet': 'Riding without helmet',
+                        'triple_riding': 'Triple riding (more than 2 riders)',
+                        'no_seatbelt': 'Driving without seatbelt',
+                        'wrong_lane': 'Riding in wrong lane'
+                    } %}
+                    {% for violation, amount in challan.fine_details.items() %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>
+                            <span class="violation-badge me-2">
+                                {{ violation.replace('_',' ') }}
+                            </span>
+                            {{ labels.get(violation, violation) }}
+                        </td>
+                        <td class="text-end text-danger fw-bold">
+                            ₹{{ "{:,}".format(amount) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr style="background:#ffebee;">
+                        <td colspan="2" class="fw-bold">TOTAL</td>
+                        <td class="text-end text-danger fw-bold fs-5">
+                            ₹{{ "{:,}".format(challan.total_fine) }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Violation Image -->
+        {% if challan.image_path %}
+        <div class="data-card">
+            <div class="card-title">
+                <i class="bi bi-image me-2"></i>Violation Image
+            </div>
+            <img src="/static/uploads/{{ challan.image_path.split('/')[-1] }}"
+                 alt="Violation" style="width:100%;border-radius:8px;max-height:400px;
+                 object-fit:contain;background:#f0f2f5">
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Owner Details -->
+    <div class="col-md-4">
+        <div class="data-card mb-3">
+            <div class="card-title">
+                <i class="bi bi-person me-2"></i>Vehicle Owner
+            </div>
+            {% if owner %}
+            <div class="d-flex flex-column gap-2">
+                <div>
+                    <div style="font-size:11px;color:#666">Owner Name</div>
+                    <div style="font-weight:600">{{ owner.owner_name }}</div>
+                </div>
+                <div>
+                    <div style="font-size:11px;color:#666">Phone</div>
+                    <div>{{ owner.phone or 'N/A' }}</div>
+                </div>
+                <div>
+                    <div style="font-size:11px;color:#666">Email</div>
+                    <div>{{ owner.email or 'N/A' }}</div>
+                </div>
+                <div>
+                    <div style="font-size:11px;color:#666">Address</div>
+                    <div>{{ owner.address or 'N/A' }}</div>
+                </div>
+                <div>
+                    <div style="font-size:11px;color:#666">Vehicle Type</div>
+                    <div>{{ owner.vehicle_type or 'N/A' }}</div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-3 text-muted">
+                <i class="bi bi-person-x" style="font-size:32px"></i>
+                <p class="mt-2" style="font-size:13px">
+                    Owner not registered for plate<br>
+                    <b>{{ challan.plate_number }}</b>
+                </p>
+                <a href="{{ url_for('owners') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-person-plus me-1"></i>Add Owner
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Update Status -->
+        <div class="data-card">
+            <div class="card-title">
+                <i class="bi bi-arrow-repeat me-2"></i>Update Status
+            </div>
+            <div class="d-grid gap-2">
+                <button onclick="updateStatus({{ challan.id }}, 'pending')"
+                        class="btn btn-sm btn-outline-warning">
+                    <i class="bi bi-hourglass-split me-1"></i>Mark Pending
+                </button>
+                <button onclick="updateStatus({{ challan.id }}, 'sent')"
+                        class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-check-circle me-1"></i>Mark Sent
+                </button>
+                <button onclick="updateStatus({{ challan.id }}, 'paid')"
+                        class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-currency-rupee me-1"></i>Mark Paid
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function sendChallan(challanId) {
+    if (!confirm('Send challan email to vehicle owner?')) return;
+    fetch(`/challan/${challanId}/send`, {method:'POST'})
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) location.reload();
+        });
+}
+
+function updateStatus(challanId, status) {
+    fetch(`/challan/${challanId}/status`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({status})
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert(data.message);
+        location.reload();
+    });
+}
+</script>
+{% endblock %}

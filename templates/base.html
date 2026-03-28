@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Traffic Challan System{% endblock %}</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --primary: #1a237e;
+        --primary-light: #3949ab;
+        --danger: #b71c1c;
+        --success: #1b5e20;
+        --sidebar-width: 240px;
+      }
+      body {
+        background: #f0f2f5;
+        font-family: "Segoe UI", sans-serif;
+      }
+
+      /* Sidebar */
+      .sidebar {
+        width: var(--sidebar-width);
+        background: var(--primary);
+        min-height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 100;
+        padding-top: 20px;
+      }
+      .sidebar-brand {
+        color: white;
+        text-align: center;
+        padding: 10px 20px 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      }
+      .sidebar-brand h5 {
+        margin: 8px 0 0;
+        font-size: 14px;
+        color: #c5cae9;
+      }
+      .sidebar .nav-link {
+        color: #c5cae9;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-radius: 0;
+        transition: all 0.2s;
+        font-size: 14px;
+      }
+      .sidebar .nav-link:hover,
+      .sidebar .nav-link.active {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+        border-left: 3px solid #7986cb;
+      }
+      .sidebar .nav-link i {
+        font-size: 18px;
+        width: 20px;
+      }
+
+      /* Main content */
+      .main-content {
+        margin-left: var(--sidebar-width);
+        padding: 24px;
+        min-height: 100vh;
+      }
+
+      /* Topbar */
+      .topbar {
+        background: white;
+        border-radius: 12px;
+        padding: 14px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      }
+      .topbar h4 {
+        margin: 0;
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      /* Cards */
+      .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        border-left: 4px solid var(--primary);
+      }
+      .stat-card .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+      }
+      .stat-card .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1a1a2e;
+      }
+      .stat-card .stat-label {
+        font-size: 13px;
+        color: #666;
+        margin-top: 2px;
+      }
+
+      /* Table */
+      .data-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      }
+      .data-card .card-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--primary);
+        margin-bottom: 16px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+      }
+      .table th {
+        font-size: 13px;
+        color: #666;
+        font-weight: 600;
+        border-bottom: 2px solid #eee;
+      }
+      .table td {
+        font-size: 13px;
+        vertical-align: middle;
+      }
+
+      /* Badges */
+      .badge-pending {
+        background: #fff3e0;
+        color: #e65100;
+      }
+      .badge-sent {
+        background: #e8f5e9;
+        color: #2e7d32;
+      }
+      .badge-paid {
+        background: #e3f2fd;
+        color: #1565c0;
+      }
+
+      /* Violations badge */
+      .violation-badge {
+        background: #ffebee;
+        color: #b71c1c;
+        border-radius: 4px;
+        padding: 2px 7px;
+        font-size: 11px;
+        font-weight: 500;
+        display: inline-block;
+        margin: 1px;
+      }
+
+      /* Alerts */
+      .alert {
+        border-radius: 8px;
+        font-size: 14px;
+      }
+
+      /* Buttons */
+      .btn-primary-custom {
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 18px;
+        font-size: 14px;
+        transition: background 0.2s;
+      }
+      .btn-primary-custom:hover {
+        background: var(--primary-light);
+        color: white;
+      }
+    </style>
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-brand">
+        <i
+          class="bi bi-traffic-cone-fill text-warning"
+          style="font-size: 32px"
+        ></i>
+        <h5>Traffic Challan<br />System</h5>
+      </div>
+      <nav class="mt-3">
+        <a
+          href="{{ url_for('index') }}"
+          class="nav-link {% if request.endpoint == 'index' %}active{% endif %}"
+        >
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a
+          href="{{ url_for('detect') }}"
+          class="nav-link {% if request.endpoint == 'detect' %}active{% endif %}"
+        >
+          <i class="bi bi-camera-video"></i> Detect Violation
+        </a>
+        <a
+          href="{{ url_for('challans') }}"
+          class="nav-link {% if request.endpoint == 'challans' %}active{% endif %}"
+        >
+          <i class="bi bi-file-earmark-text"></i> Challans
+        </a>
+        <a
+          href="{{ url_for('owners') }}"
+          class="nav-link {% if request.endpoint == 'owners' %}active{% endif %}"
+        >
+          <i class="bi bi-people"></i> Vehicle Owners
+        </a>
+      </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if
+      messages %} {% for category, message in messages %}
+      <div
+        class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show"
+      >
+        <i
+          class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} me-2"
+        ></i>
+        {{ message }}
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="alert"
+        ></button>
+      </div>
+      {% endfor %} {% endif %} {% endwith %} {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

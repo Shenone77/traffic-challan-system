@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+{% block title %}Detect Violation{% endblock %}
+{% block extra_css %}
+<style>
+.page-header { margin-bottom: 32px; }
+.page-header h3 { font-weight: 700; color: #1a237e; margin: 0; }
+.page-header p  { color: #888; margin: 4px 0 0; }
+
+.tab-row { display: flex; gap: 8px; margin-bottom: 28px; }
+.tab-btn {
+  padding: 10px 24px; border-radius: 50px; border: 2px solid #e0e0e0;
+  background: white; font-weight: 600; font-size: 14px; color: #666;
+  cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 8px;
+}
+.tab-btn:hover { border-color: #1a237e; color: #1a237e; }
+.tab-btn.active { background: #1a237e; border-color: #1a237e; color: white; }
+.tab-btn .dot { width:9px; height:9px; background:#e53935; border-radius:50%; animation: blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* Upload zone */
+.upload-box {
+  border: 2px dashed #c5cae9; border-radius: 16px; padding: 48px 24px;
+  text-align: center; cursor: pointer; transition: all .2s; background: #fafafa;
+  position: relative;
+}
+.upload-box:hover, .upload-box.over { border-color: #1a237e; background: #f0f4ff; }
+.upload-box input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.upload-box .icon { font-size: 48px; color: #9fa8da; margin-bottom: 12px; display:block; }
+.upload-box h5 { color: #333; font-weight: 600; margin: 0 0 6px; }
+.upload-box p  { color: #aaa; font-size: 13px; margin: 0; }
+.preview-wrap { margin-top: 16px; display:none; }
+.preview-wrap img { max-width:100%; max-height:220px; border-radius:10px; object-fit:contain; }
+.file-chosen { margin-top:12px; color:#1a237e; font-weight:600; font-size:14px; display:none; }
+
+/* Fields */
+.field { margin-bottom: 20px; }
+.field label { display:block; font-size:13px; font-weight:600; color:#555; margin-bottom:6px; }
+.field input, .field select {
+  width:100%; padding: 11px 14px; border-radius:10px;
+  border: 1.5px solid #e0e0e0; font-size:14px; outline:none; transition: border .2s;
+}
+.field input:focus, .field select:focus { border-color: #1a237e; }
+
+/* Buttons */
+.btn-main {
+  width:100%; padding:14px; background:#1a237e; color:white; border:none;
+  border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; transition:all .2s;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+}
+.btn-main:hover:not(:disabled) { background: #283593; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(26,35,126,.3); }
+.btn-main:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+.btn-green { background: #2e7d32; }
+.btn-green:hover:not(:disabled) { background: #388e3c; box-shadow: 0 4px 16px rgba(46,125,50,.3); }
+.btn-stop  { background: #c62828; padding:14px 20px; width:auto; }
+
+/* Loading overlay */
+.loading-overlay {
+  display:none; position:fixed; inset:0; background:rgba(255,255,255,.85);
+  z-index:9999; flex-direction:column; align-items:center; justify-content:center; gap:20px;
+}
+.loading-overlay.show { display:flex; }
+.spinner-big { width:60px; height:60px; border:5px solid #e0e0e0; border-top-color:#1a237e;
+  border-radius:50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-overlay h5 { color:#1a237e; font-weight:700; font-size:18px; margin:0; }
+.loading-overlay p  { color:#888; font-size:14px; margin:0; }
+
+/* Results */
+.result-section { margin-top: 40px; }
+.result-section .section-title {
+  font-size:18px; font-weight:700; color:#1a237e;
+  margin-bottom:20px; padding-bottom:10px; border-bottom: 2px solid #e8eaf6;
+}
+.result-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+.result-box {
+  background:white; border-radius:14px; padding:20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.07);
+}
+.result-box .label { font-size:12px; font-weight:600; color:#999; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
+.plate-display {
+  display:inline-block; background:white; color:#000; font-weight:900;
+  font-size:22px; padding:8px 20px; border-radius:8px; letter-spacing:.12em;
+  font-family:'Courier New',monospace; border:3px solid #333;
+  box-shadow: inset 0 0 0 2px #e0e0e0;
+}
+.fine-display { font-size:28px; font-weight:800; color:#e65100; }
+.violation-tag {
+  display:inline-flex; align-items:center; gap:6px;
+  background:#ffebee; color:#c62828; border-radius:50px;
+  padding:6px 14px; font-size:13px; font-weight:600; margin:3px;
+}
+.no-violation { color:#2e7d32; font-weight:600; font-size:15px; }
+.annotated-img { width:100%; border-radius:14px; box-shadow:0 4px 16px rgba(0,0,0,.1); }
+.action-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
+.action-btn {
+  display:inline-flex; align-items:center; gap:8px; padding:10px 20px;
+  border-radius:10px; font-weight:600; font-size:14px; text-decoration:none;
+  cursor:pointer; border:none; transition:all .15s;
+}
+.action-btn.green { background:#e8f5e9; color:#2e7d32; }
+.action-btn.green:hover { background:#c8e6c9; }
+.action-btn.blue  { background:#e3f2fd; color:#1565c0; }
+.action-btn.blue:hover  { background:#bbdefb; }
+.action-btn.gray  { background:#f5f5f5; color:#555; }
+.action-btn.gray:hover  { background:#eeeeee; }
+
+/* Camera */
+.camera-wrap { border-radius:16px; overflow:hidden; background:#000; aspect-ratio:16/9; position:relative; }
+.camera-wrap img { width:100%; height:100%; object-fit:cover; }
+.camera-placeholder {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:12px; color:rgba(255,255,255,.4);
+}
+.camera-placeholder i { font-size:48px; }
+.camera-info { margin-top:12px; padding:14px 18px; background:white; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.07); min-height:52px; }
+
+/* Progress bar for video */
+.progress-wrap { display:none; margin-top:16px; }
+.progress-track { background:#e0e0e0; border-radius:999px; height:8px; overflow:hidden; }
+.progress-fill  { height:100%; background:linear-gradient(90deg,#1a237e,#7986cb); border-radius:999px; width:0; transition:width .4s; }
+.progress-label { font-size:13px; color:#888; margin-top:6px; text-align:center; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner-big"></div>
+  <h5>Analysing image...</h5>
+  <p id="loadingMsg">Running detection models, please wait</p>
+</div>
+
+<div class="page-header">
+  <h3><i class="bi bi-camera-video me-2"></i>Detect Violation</h3>
+  <p>Upload an image, video, or use live camera to detect traffic violations and auto-generate challans</p>
+</div>
+
+<!-- Tabs -->
+<div class="tab-row">
+  <button class="tab-btn active" onclick="switchTab('image',this)">
+    <i class="bi bi-image"></i> Image
+  </button>
+  <button class="tab-btn" onclick="switchTab('video',this)">
+    <i class="bi bi-film"></i> Video
+  </button>
+  <button class="tab-btn" onclick="switchTab('live',this)">
+    <span class="dot"></span> Live Camera
+  </button>
+</div>
+
+<!-- ── IMAGE PANEL ── -->
+<div id="panel-image" class="panel active">
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div style="background:white;border-radius:16px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,.07);">
+        <div class="upload-box" id="dropImage">
+          <input type="file" id="imageFile" accept="image/*" onchange="onImagePick(this)">
+          <span class="icon">📷</span>
+          <h5>Drop image here or click to browse</h5>
+          <p>JPG · PNG · WEBP · BMP</p>
+          <div class="preview-wrap" id="imagePreviewWrap">
+            <img id="imagePreview" src="" alt="">
+          </div>
+        </div>
+        <div class="file-chosen" id="imageChosen"></div>
+        <div class="field mt-4">
+          <label><i class="bi bi-geo-alt me-1"></i>Location (optional)</label>
+          <input type="text" id="imageLocation" placeholder="e.g. Hyderabad, NH-44">
+        </div>
+        <button class="btn-main" id="btnDetectImage" onclick="submitImage()">
+          <i class="bi bi-search"></i> Detect Violations
+        </button>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div id="imageResults" style="display:none;">
+        <div class="result-section">
+          <div class="section-title">Detection Results</div>
+          <div class="result-grid">
+            <div class="result-box">
+              <div class="label">Number Plate</div>
+              <div class="plate-display" id="resPlate">—</div>
+            </div>
+            <div class="result-box">
+              <div class="label">Total Fine</div>
+              <div class="fine-display" id="resFine">₹0</div>
+            </div>
+          </div>
+          <div class="result-box" style="margin-bottom:16px;">
+            <div class="label">Violations</div>
+            <div id="resViolations" style="margin-top:6px;">—</div>
+          </div>
+          <div class="result-box">
+            <div class="label">Annotated Image</div>
+            <img id="resImg" class="annotated-img mt-2" src="" alt="">
+          </div>
+          <div class="action-row" id="resActions"></div>
+        </div>
+      </div>
+      <div id="imagePlaceholder" style="background:white;border-radius:16px;padding:60px 24px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.07);">
+        <i class="bi bi-shield-check" style="font-size:56px;color:#c5cae9;"></i>
+        <p style="color:#bbb;margin-top:16px;font-size:15px;">Upload an image to see detection results</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── VIDEO PANEL ── -->
+<div id="panel-video" class="panel">
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div style="background:white;border-radius:16px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,.07);">
+        <div class="upload-box" id="dropVideo">
+          <input type="file" id="videoFile" accept="video/*" onchange="onVideoPick(this)">
+          <span class="icon">🎬</span>
+          <h5>Drop video here or click to browse</h5>
+          <p>MP4 · AVI · MOV · MKV</p>
+        </div>
+        <div class="file-chosen" id="videoChosen"></div>
+        <div class="progress-wrap" id="videoProgress">
+          <div class="progress-track"><div class="progress-fill" id="videoBar"></div></div>
+          <div class="progress-label" id="videoBarMsg">Processing...</div>
+        </div>
+        <div class="field mt-4">
+          <label><i class="bi bi-geo-alt me-1"></i>Location (optional)</label>
+          <input type="text" id="videoLocation" placeholder="e.g. Hyderabad, NH-44">
+        </div>
+        <button class="btn-main" id="btnDetectVideo" onclick="submitVideo()">
+          <i class="bi bi-play-circle"></i> Process Video
+        </button>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div id="videoResults" style="display:none;">
+        <div class="result-section">
+          <div class="section-title">Video Detection Results</div>
+          <div class="result-grid">
+            <div class="result-box">
+              <div class="label">Number Plate</div>
+              <div class="plate-display" id="vResPlate">—</div>
+            </div>
+            <div class="result-box">
+              <div class="label">Total Fine</div>
+              <div class="fine-display" id="vResFine">₹0</div>
+            </div>
+          </div>
+          <div class="result-box" style="margin-bottom:16px;">
+            <div class="label">Violations</div>
+            <div id="vResViolations" style="margin-top:6px;">—</div>
+          </div>
+          <div class="action-row" id="vResActions"></div>
+        </div>
+      </div>
+      <div id="videoPlaceholder" style="background:white;border-radius:16px;padding:60px 24px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.07);">
+        <i class="bi bi-camera-video" style="font-size:56px;color:#c5cae9;"></i>
+        <p style="color:#bbb;margin-top:16px;font-size:15px;">Upload a video to process all frames</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── LIVE PANEL ── -->
+<div id="panel-live" class="panel">
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div style="background:white;border-radius:16px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,.07);">
+        <div class="field">
+          <label>Camera Source</label>
+          <select id="cameraIdx">
+            <option value="0">Default Camera (0)</option>
+            <option value="1">Camera 1</option>
+            <option value="2">Camera 2</option>
+          </select>
+        </div>
+        <div class="field">
+          <label><i class="bi bi-geo-alt me-1"></i>Location (optional)</label>
+          <input type="text" id="liveLocation" placeholder="e.g. Junction, NH-44">
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn-main btn-green" onclick="startLive()" id="btnStartLive">
+            <i class="bi bi-camera-video"></i> Start
+          </button>
+          <button class="btn-main btn-stop" onclick="stopLive()" id="btnStopLive" disabled>
+            <i class="bi bi-stop-fill"></i>
+          </button>
+        </div>
+        <p style="color:#aaa;font-size:12px;margin-top:14px;">
+          Challans auto-generated for registered plates when violations detected.
+        </p>
+      </div>
+    </div>
+    <div class="col-lg-8">
+      <div class="camera-wrap">
+        <img id="liveFeed" src="" alt="" style="display:none;">
+        <div class="camera-placeholder" id="cameraPlaceholder">
+          <i class="bi bi-camera-video-off"></i>
+          <span style="font-size:14px;">Camera not started</span>
+        </div>
+      </div>
+      <div class="camera-info" id="liveInfo">
+        <span style="color:#bbb;font-size:13px;">Start camera to see live detections</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const LABELS = { no_helmet:"🪖 No Helmet", triple_riding:"🏍️ Triple Riding", no_seatbelt:"🚗 No Seatbelt" };
+const FINES  = { no_helmet:1000, triple_riding:1000, no_seatbelt:1000 };
+let liveOn = false, livePoller = null;
+
+/* ── tabs ── */
+function switchTab(name, btn) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("panel-" + name).classList.add("active");
+  if (name !== "live") stopLive();
+}
+
+/* ── drag & drop ── */
+function setupDrop(zoneId, inputId) {
+  const z = document.getElementById(zoneId);
+  z.addEventListener("dragover",  e => { e.preventDefault(); z.classList.add("over"); });
+  z.addEventListener("dragleave", () => z.classList.remove("over"));
+  z.addEventListener("drop", e => {
+    e.preventDefault(); z.classList.remove("over");
+    const inp = document.getElementById(inputId);
+    inp.files = e.dataTransfer.files;
+    inp.dispatchEvent(new Event("change"));
+  });
+}
+setupDrop("dropImage","imageFile");
+setupDrop("dropVideo","videoFile");
+
+/* ── image pick ── */
+function onImagePick(inp) {
+  const f = inp.files[0]; if (!f) return;
+  document.getElementById("imageChosen").textContent = "📎 " + f.name;
+  document.getElementById("imageChosen").style.display = "block";
+  const wr = document.getElementById("imagePreviewWrap");
+  const pr = document.getElementById("imagePreview");
+  pr.src = URL.createObjectURL(f); wr.style.display = "block";
+}
+
+/* ── video pick ── */
+function onVideoPick(inp) {
+  const f = inp.files[0]; if (!f) return;
+  const el = document.getElementById("videoChosen");
+  el.textContent = "📎 " + f.name; el.style.display = "block";
+}
+
+/* ── loading ── */
+function showLoading(msg) {
+  document.getElementById("loadingMsg").textContent = msg || "Running detection models, please wait";
+  document.getElementById("loadingOverlay").classList.add("show");
+}
+function hideLoading() {
+  document.getElementById("loadingOverlay").classList.remove("show");
+}
+
+/* ── render results ── */
+function renderResults(data, plateId, fineId, violId, actId, imgId, imgWrapId, placeholderId) {
+  document.getElementById(placeholderId).style.display = "none";
+  document.getElementById(imgWrapId || "").style.display = "block";
+
+  document.getElementById(plateId).textContent = data.plate || "UNKNOWN";
+
+  const total = (data.violations||[]).reduce((s,v) => s+(FINES[v]||500), 0);
+  document.getElementById(fineId).textContent  = "₹" + total.toLocaleString();
+
+  const vEl = document.getElementById(violId);
+  if (data.violations && data.violations.length) {
+    vEl.innerHTML = data.violations.map(v =>
+      `<span class="violation-tag"><i class="bi bi-exclamation-triangle-fill"></i>${LABELS[v]||v}</span>`
+    ).join("");
+  } else {
+    vEl.innerHTML = '<span class="no-violation"><i class="bi bi-check-circle-fill me-1"></i>No violations detected</span>';
+  }
+
+  if (imgId && data.annotated_image) {
+    const img = document.getElementById(imgId);
+    img.src = "/" + data.annotated_image + "?t=" + Date.now();
+    img.style.display = "block";
+  }
+
+  const acts = document.getElementById(actId);
+  acts.innerHTML = "";
+  if (data.challan_id) {
+    acts.innerHTML += `<a href="/challan/${data.challan_id}" class="action-btn green"><i class="bi bi-file-earmark-text"></i>View Challan</a>`;
+    acts.innerHTML += `<a href="/challan/${data.challan_id}/pdf" class="action-btn blue"><i class="bi bi-download"></i>Download PDF</a>`;
+  }
+  if (data.annotated_video) {
+    acts.innerHTML += `<a href="/${data.annotated_video}" class="action-btn gray"><i class="bi bi-film"></i>Download Video</a>`;
+  }
+}
+
+/* ── submit image ── */
+async function submitImage() {
+  const inp = document.getElementById("imageFile");
+  if (!inp.files[0]) { alert("Please select an image first."); return; }
+  const fd = new FormData();
+  fd.append("file", inp.files[0]);
+  fd.append("location", document.getElementById("imageLocation").value);
+
+  showLoading("Detecting violations in image...");
+  document.getElementById("btnDetectImage").disabled = true;
+
+  try {
+    const r    = await fetch("/detect", { method:"POST", body:fd });
+    const data = await r.json();
+    hideLoading();
+    if (!data.ok) { alert("Error: " + data.msg); return; }
+    renderResults(data, "resPlate","resFine","resViolations","resActions",
+                  "resImg","imageResults","imagePlaceholder");
+  } catch(e) {
+    hideLoading(); alert("Detection failed: " + e.message);
+  }
+  document.getElementById("btnDetectImage").disabled = false;
+}
+
+/* ── submit video ── */
+async function submitVideo() {
+  const inp = document.getElementById("videoFile");
+  if (!inp.files[0]) { alert("Please select a video first."); return; }
+  const fd = new FormData();
+  fd.append("file", inp.files[0]);
+  fd.append("location", document.getElementById("videoLocation").value);
+
+  document.getElementById("videoProgress").style.display = "block";
+  document.getElementById("btnDetectVideo").disabled = true;
+  showLoading("Processing video frames...");
+
+  const poll = setInterval(() => {
+    fetch("/detect/progress").then(r=>r.json()).then(d => {
+      document.getElementById("videoBar").style.width = d.pct + "%";
+      document.getElementById("videoBarMsg").textContent = d.msg;
+    }).catch(()=>{});
+  }, 1200);
+
+  try {
+    const r    = await fetch("/detect", { method:"POST", body:fd });
+    const data = await r.json();
+    clearInterval(poll);
+    hideLoading();
+    document.getElementById("videoBar").style.width = "100%";
+    document.getElementById("videoBarMsg").textContent = "Complete!";
+    if (!data.ok) { alert("Error: " + data.msg); return; }
+    renderResults(data,"vResPlate","vResFine","vResViolations","vResActions",
+                  null, "videoResults","videoPlaceholder");
+  } catch(e) {
+    clearInterval(poll); hideLoading(); alert("Failed: " + e.message);
+  }
+  document.getElementById("btnDetectVideo").disabled = false;
+}
+
+/* ── live camera ── */
+function startLive() {
+  const cam = document.getElementById("cameraIdx").value;
+  liveOn = true;
+  document.getElementById("liveFeed").src = "/live/feed?camera=" + cam + "&t=" + Date.now();
+  document.getElementById("liveFeed").style.display = "block";
+  document.getElementById("cameraPlaceholder").style.display = "none";
+  document.getElementById("btnStartLive").disabled = true;
+  document.getElementById("btnStopLive").disabled  = false;
+  livePoller = setInterval(pollLive, 2000);
+}
+
+function stopLive() {
+  liveOn = false;
+  clearInterval(livePoller);
+  fetch("/live/stop").catch(()=>{});
+  document.getElementById("liveFeed").src = "";
+  document.getElementById("liveFeed").style.display = "none";
+  document.getElementById("cameraPlaceholder").style.display = "flex";
+  document.getElementById("btnStartLive").disabled = false;
+  document.getElementById("btnStopLive").disabled  = true;
+  document.getElementById("liveInfo").innerHTML = '<span style="color:#bbb;font-size:13px;">Camera stopped</span>';
+}
+
+function pollLive() {
+  if (!liveOn) return;
+  fetch("/live/detections").then(r=>r.json()).then(d => {
+    const el = document.getElementById("liveInfo");
+    if (d.violations && d.violations.length) {
+      el.innerHTML = d.violations.map(v =>
+        `<span class="violation-tag">${LABELS[v]||v}</span>`).join("") +
+        (d.plate && d.plate!="UNKNOWN" ? ` &nbsp;<strong>🚘 ${d.plate}</strong>` : "") +
+        (d.challan_id ? ` &nbsp;<a href="/challan/${d.challan_id}" class="action-btn green" style="padding:4px 12px;font-size:12px;">Challan #${d.challan_id}</a>` : "");
+    } else {
+      el.innerHTML = '<span style="color:#aaa;font-size:13px;"><i class="bi bi-eye me-1"></i>Monitoring...</span>';
+    }
+  }).catch(()=>{});
+}
+</script>
+{% endblock %}
